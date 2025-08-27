@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-configs
+data:
+  host: database-service
+  port: "3306"
+  database: react_node_app

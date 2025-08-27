@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # Define the services for the application
+  frontend-app:
+    image: frontend:latest
+    build: ./frontend
+    ports:
+      - "80:80"
+    networks:
+      - application-network
+    depends_on:
+      - backend-app
+
+  backend-app:
+    image: backend:latest
+    build: ./backend
+    #ports:
+      #- "3200:3200"
+    environment:
+      - MYSQL_DB_HOST=${DB_HOST} # Hostname of the MySQL database host.docker.internal
+      - MYSQL_DB_PORT=${DB_PORT} # Port of the MySQL database
+      - MYSQL_USER=${DB_USER} # Username for the MySQL database
+      - MYSQL_USER_PASSWORD=${DB_USER_PASSWORD} # Password for the MySQL database user
+      - MYSQL_DATABASE=${DATABASE} # Name of the MySQL database
+    networks:
+      - application-network  
+    depends_on:
+      mysqldatabase:
+        condition: service_healthy
+
+  mysqldatabase:
+    image: mysql:8.0
+    #ports:
+      #- "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+    networks:
+      - application-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d # SQL scripts to initialize the database
+      - mysql_data_folder:/var/lib/mysql
+
+networks:
+  application-network:
+    driver: bridge
+
+volumes:
+  mysql_data_folder:

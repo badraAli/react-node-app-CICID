@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-backend
+  labels:
+    app: app-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: app-backend
+  template:
+    metadata:
+      labels:    
+        app: app-backend
+    spec:
+      initContainers:
+      - name: wait-for-db
+        image: busybox
+        command: ['sh', '-c', 'until nc -z -v -w30 database-service 3306; do echo "Waiting for database connection..."; sleep 5; done;']
+        
+      containers:
+      - name: app-backend
+        image: 891377325592.dkr.ecr.us-east-1.amazonaws.com/react-node-app/backend:1.0
+        ports:
+        - containerPort: 3200
+        env:
+        - name: MYSQL_DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: host
+        - name: MYSQL_DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: port
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: user
+        - name: MYSQL_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: password
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: database
+      imagePullSecrets:
+      - name: ecr-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-app
+spec:
+  selector:
+    app: app-backend
+  ports:
+    - protocol: TCP
+      port: 3200
+      targetPort: 3200
